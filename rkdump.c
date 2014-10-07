@@ -99,9 +99,9 @@ main(int argc, char *argv[])
 
 	crc = 0;
 	if (type == T_CRAMFS || type == T_UPDATE)
-		RKCRC(crc, buf, nr);
+		crc = rkcrc32(crc, buf, nr);
 	else
-		RKCRC(crc, &buf[8], nr - 8);
+		crc = rkcrc32(crc, &buf[8], nr - 8);
 	if (type != T_PARAMETER)
 		write(out, buf, nr);
 	else
@@ -115,7 +115,7 @@ main(int argc, char *argv[])
 		if (size < (uint32_t)nr)
 			nr = size;
 
-		RKCRC(crc, buf, nr);
+		crc = rkcrc32(crc, buf, nr);
 		write(out, buf, nr);
 		size -= nr;
 	}

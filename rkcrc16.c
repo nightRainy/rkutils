@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2010,2014 FUKAUMI Naoki.
+ * Copyright (c) 2014 FUKAUMI Naoki.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,46 +23,52 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _RKCRC_H_
-#define _RKCRC_H_
-
+#include <sys/mman.h>
+#include <err.h>
+#include <fcntl.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 
-static inline uint16_t
-rkcrc16(uint16_t crc, uint8_t *buf, uint64_t size)
+#include "rkcrc.h"
+
+int
+main(int argc, char *argv[])
 {
-	int i;
+	uint8_t *buf, tail[2];
+	off_t size;
+	int in, out;
+	uint16_t crc;
 
-	while (size-- > 0) {
-		crc ^= *buf++ << 8;
-		for (i = 0; i < 8; i++) {
-			if (crc & 0x8000)
-				crc = (crc << 1) ^ 0x1021;
-			else
-				crc = (crc << 1);
-		}
+	if (argc != 3) {
+		fprintf(stderr, "usage: %s infile outfile\n", argv[0]);
+		exit(EXIT_FAILURE);
 	}
 
-	return crc;
+	if ((in = open(argv[1], O_RDONLY)) == -1)
+		err(EXIT_FAILURE, "%s", argv[1]);
+
+	if ((size = lseek(in, 0, SEEK_END)) == -1)
+		err(EXIT_FAILURE, "%s", argv[1]);
+
+	if ((buf = mmap(NULL, size, PROT_READ, MAP_SHARED | MAP_FILE, in, 0))
+	    == MAP_FAILED)
+		err(EXIT_FAILURE, "%s", argv[1]);
+
+	if ((out = open(argv[2], O_WRONLY | O_CREAT | O_TRUNC, 0644)) == -1)
+		err(EXIT_FAILURE, "%s", argv[2]);
+
+	crc = 0xffff;
+	crc = rkcrc16(crc, buf, size);
+	tail[0] = crc >> 8;
+	tail[1] = crc & 0xff;
+
+	write(out, buf, size);
+	write(out, tail, sizeof(tail));
+
+	close(out);
+	close(in);
+
+	return EXIT_SUCCESS;
 }
-
-
-static inline uint32_t
-rkcrc32(uint32_t crc, uint8_t *buf, uint64_t size)
-{
-	int i;
-
-	while (size-- > 0) {
-		crc ^= *buf++ << 24;
-		for (i = 0; i < 8; i++) {
-			if (crc & 0x80000000)
-				crc = (crc << 1) ^ 0x04c10db7;
-			else
-				crc = (crc << 1);
-		}
-	}
-
-	return crc;
-}
-
-#endif /* !_RKCRC_H_ */

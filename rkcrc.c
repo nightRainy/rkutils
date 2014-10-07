@@ -103,7 +103,7 @@ main(int argc, char *argv[])
 
 	crc = 0;
 	while ((nr = read(in, buf, sizeof(buf))) != -1 && nr != 0) {
-		RKCRC(crc, buf, nr);
+		crc = rkcrc32(crc, buf, nr);
 		write(out, buf, nr);
 	}
 

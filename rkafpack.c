@@ -189,7 +189,7 @@ main(int argc, char *argv[])
 	}
 
 	crc = 0;
-	RKCRC(crc, header, BUFSIZE);
+	crc = rkcrc32(crc, header, BUFSIZE);
 	write(STDOUT_FILENO, header, BUFSIZE);
 
 	for (p = &header[0x8c]; count > 0; p += 0x70, count--) {
@@ -211,7 +211,7 @@ main(int argc, char *argv[])
 			nr = read(fd, &buf[8], BUFSIZE - 8);
 
 			pcrc = 0;
-			RKCRC(pcrc, &buf[8], nr);
+			pcrc = rkcrc32(pcrc, &buf[8], nr);
 			buf[8 + nr + 0] = (pcrc >> 0) & 0xff;
 			buf[8 + nr + 1] = (pcrc >> 8) & 0xff;
 			buf[8 + nr + 2] = (pcrc >> 16) & 0xff;
@@ -219,13 +219,13 @@ main(int argc, char *argv[])
 
 			memset(&buf[8 + nr + 4], 0, BUFSIZE - 8 - nr - 4);
 
-			RKCRC(crc, buf, BUFSIZE);
+			crc = rkcrc32(crc, buf, BUFSIZE);
 			write(STDOUT_FILENO, buf, BUFSIZE);
 		} else {
 			while ((nr = read(fd, buf, BUFSIZE)) != -1 && nr != 0) {
 				if (nr != BUFSIZE)
 					memset(&buf[nr], 0, BUFSIZE - nr);
-				RKCRC(crc, buf, BUFSIZE);
+				crc = rkcrc32(crc, buf, BUFSIZE);
 				write(STDOUT_FILENO, buf, BUFSIZE);
 			}
 		}
