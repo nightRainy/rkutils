@@ -105,12 +105,12 @@ unpack_rkaf(const char *path, uint8_t *buf, uint32_t size)
 		isize = p[0x68] | p[0x69] << 8 | p[0x6a] << 16 | p[0x6b] << 24;
 		fsize = p[0x6c] | p[0x6d] << 8 | p[0x6e] << 16 | p[0x6f] << 24;
 
-		if (memcmp(fpath, "SELF", 4) == 0)
-			printf("----------------- %s:%s:0x%x@0x%x (%s)", name,
-			    fpath, nsize, noff, path);
+		if (memcmp(fpath, "SELF", 4) == 0 ||
+		    memcmp(fpath, "RESERVED", 8) == 0)
+			printf("---------- %s:%s:0x%x@0x%x", name, fpath, nsize,
+			    noff);
 		else {
-			printf("%08x-%08x %s:%s", ioff, ioff + isize - 1, name,
-			    fpath);
+			printf("0x%08x %s:%s", ioff, name, fpath);
 
 			if (noff != 0xffffffffU)
 				printf(":0x%x@0x%x", nsize, noff);
@@ -153,7 +153,7 @@ unpack_rkfw(const char *path, uint8_t *buf, uint32_t size)
 	ioff = 0;
 	isize = buf[4];
 	snprintf(rpath, sizeof(rpath), "%s-HEAD", path);
-	printf("%08x-%08x %s %d bytes\n", ioff, ioff + isize - 1, rpath, isize);
+	printf("0x%08x %s %d bytes\n", ioff, rpath, isize);
 	write_image(rpath, &buf[ioff], isize);
 
 	ioff = buf[0x19] | buf[0x1a] << 8 | buf[0x1b] << 16 | buf[0x1c] << 24;
@@ -163,7 +163,7 @@ unpack_rkfw(const char *path, uint8_t *buf, uint32_t size)
 		errx(EXIT_FAILURE, "no BOOT signature");
 
 	snprintf(rpath, sizeof(rpath), "%s-BOOT", path);
-	printf("%08x-%08x %s %d bytes\n", ioff, ioff + isize - 1, rpath, isize);
+	printf("0x%08x %s %d bytes\n", ioff, rpath, isize);
 	write_image(rpath, &buf[ioff], isize);
 
 	ioff = buf[0x21] | buf[0x22] << 8 | buf[0x23] << 16 | buf[0x24] << 24;
@@ -172,21 +172,24 @@ unpack_rkfw(const char *path, uint8_t *buf, uint32_t size)
 	if (memcmp(&buf[ioff], "RKAF", 4) != 0)
 		errx(EXIT_FAILURE, "no RKAF signature");
 
-	printf("%08x-%08x update.img %d bytes\n", ioff, ioff + isize - 1,
-	    isize);
-	write_image("update.img", &buf[ioff], isize);
+	snprintf(rpath, sizeof(rpath), "%s-update.img", path);
+	printf("0x%08x %s %d bytes\n", ioff, rpath, isize);
+	write_image(rpath, &buf[ioff], isize);
 
-	printf("\nunpacking update.img\n");
+	printf("\nunpacking %s\n", rpath);
 	printf("================================================================================\n");
-	unpack_rkaf("update.img", &buf[ioff], isize);
+	unpack_rkaf(rpath, &buf[ioff], isize);
 	printf("================================================================================\n\n");
 
-	if (size - (ioff + isize) != 32)
+	ioff += isize;
+	isize = 32;
+
+	if ((size - ioff) != isize)
 		errx(EXIT_FAILURE, "invalid MD5 length");
 
 	snprintf(rpath, sizeof(rpath), "%s-MD5", path);
-	printf("%08x-%08x %s 32 bytes\n", ioff, ioff + isize - 1, rpath);
-	write_image(rpath, &buf[ioff + isize], 32);
+	printf("0x%08x %s %d bytes\n", ioff, rpath, isize);
+	write_image(rpath, &buf[ioff], isize);
 }
 
 int
